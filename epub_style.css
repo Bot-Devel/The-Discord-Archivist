@@ -1,0 +1,36 @@
+@namespace epub "http://www.idpf.org/2007/ops";
+
+body {
+  font-family: Verdana, Helvetica, Arial, sans-serif;
+}
+
+h1 {
+  text-align: center;
+}
+
+h2 {
+  text-align: left;
+  font-weight: bold;
+}
+
+ol {
+  list-style-type: none;
+  margin: 0;
+}
+
+ol > li {
+  margin-top: 0.3em;
+}
+
+ol > li > span {
+  font-weight: bold;
+}
+
+ol > li > ol {
+  margin-left: 0.5em;
+}
+
+.spoiler {
+  padding-left: 0.4em;
+  border-left: 0.2em solid #c7ccd1;
+}
