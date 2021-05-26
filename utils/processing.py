@@ -18,6 +18,8 @@ from ebooklib import epub
 from PIL import Image
 import io
 import os
+import random
+import string
 from discord import Embed
 from datetime import timezone, datetime
 
@@ -56,17 +58,9 @@ async def build_epub(log, message_history, progress_msg):
         embed=Embed(description="Building Epub"))
 
     for message in message_history:
-        img_flag = 0
         empty_flag = 0
 
         if message.content or message.attachments:
-
-            # adding line breaks
-            message_content = message.content.splitlines()
-            message_content = "<br />".join(message_content)
-
-            time = message.created_at.replace(tzinfo=timezone.utc).strftime(
-                r'%-d %b, %Y at %H:%M:%S %Z%z')
 
             if str(message.author.name) not in author_info:
                 author_info[str(message.author.name)] = 1
@@ -85,60 +79,38 @@ async def build_epub(log, message_history, progress_msg):
                 msg_pin_counter += 1
                 msg_pin = "(Pinned)"
 
+            time = message.created_at.replace(tzinfo=timezone.utc).strftime(
+                r'%-d %b, %Y at %H:%M:%S %Z%z')
+
             c1 = epub.EpubHtml(title=f"{str(message.author.name)} {author_info[str(message.author.name)]} {msg_pin}",
                                file_name=f'{str(message.author.name)}_{str(author_info[str(message.author.name)])}.xhtml', lang='en')
 
-            c1.content = f"<h2>{str(message.author.name)} {author_info[str(message.author.name)]} {msg_pin}</h2>\n<hr><p>Author Username: {message.author}<br />Author ID:  {message.author.id}<br />Datetime: {time}<br />\n<hr><br />{message_content}"
+            c1.content = f"<h2>{str(message.author.name)} {author_info[str(message.author.name)]} {msg_pin}</h2>\n<hr><p>Author Username: {message.author}<br />Author ID:  {message.author.id}<br />Datetime: {time}<br />\n<hr><br />"
 
-            if message.attachments:
-                for attachment in message.attachments:
-                    if any(attachment.filename.lower().endswith(image) for image in image_types):
-                        img_flag = 1
+            if message.reference:
+                message_ref = message.reference  # message id of reply
+                message_reply = await message.channel.fetch_message(message_ref.message_id)
 
-                        log.info(
-                            f"Image found, saving data/img/{server_id}/{str(message.author.name)}_{str(author_info[str(message.author.name)])}.png")
-                        await progress_msg.edit(
-                            embed=Embed(
-                                description=f"Image found, saving data/img/{server_id}/{str(message.author.name)}_{str(author_info[str(message.author.name)])}.png"))
+                if message_reply.content or message_reply.attachments:
+                    c1.content += '<i><u>Message Reply to:</u></i><br />'
+                    c1, book, empty_flag = await get_message_data(
+                        empty_flag,
+                        log, message_reply, progress_msg, server_id, author_info, c1, book)
+                    c1.content += '\n<hr align="left" style="width: 50%" />'
 
-                        await attachment.save(f"data/img/{server_id}/{str(message.author.name)}_{str(author_info[str(message.author.name)])}.png")
+            c1, book, empty_flag = await get_message_data(
+                empty_flag,
+                log, message, progress_msg, server_id, author_info, c1, book)
 
-                        c1.content += f'<br /><img alt={str(message.author.name)}_{str(author_info[str(message.author.name)])} src="data/img/{server_id}/{str(message.author.name)}_{str(author_info[str(message.author.name)])}.png"></p>'
-
-                    elif not message.content:
-                        empty_flag = 1
-                        continue
-            else:
-                c1.content += u'</p>'
-
-            if img_flag == 1:
-
-                # load Image file
-                img1 = Image.open(
-                    f'data/img/{server_id}/{str(message.author.name)}_{str(author_info[str(message.author.name)])}.png')
-
-                img1 = img1.convert('RGB')
-                b = io.BytesIO()
-                img1.save(b, 'jpeg')
-                b_image1 = b.getvalue()
-
-                # define Image file path in .epub
-                image1_item = epub.EpubItem(
-                    uid=f'{str(message.author.name)}_{str(author_info[str(message.author.name)])}',
-                    file_name=f'data/img/{server_id}/{str(message.author.name)}_{str(author_info[str(message.author.name)])}.png',
-                    media_type='image/jpeg', content=b_image1)
-
-                book.add_item(image1_item)
-
-            if empty_flag == 0:
-                chapters.append(c1)
+        if empty_flag == 0:
+            chapters.append(c1)
 
     message_authors = []
     for author in author_info.keys():
         message_authors.append(author)
     message_authors = ", ".join(message_authors)
 
-    # pop out the last message which is the bot command i.e. -archive
+    # pop out the last message which is the bot command i.e. >archive
     chapters.pop(-1)
 
     # About chapter
@@ -152,7 +124,7 @@ async def build_epub(log, message_history, progress_msg):
             <p> Channel: <br />
                     <font style="margin-left: 50px">Name: {channel_name}</font><br />
                     <font style="margin-left: 50px">ID: {channel_id}</font><br /><br />
-   
+
                 Server: <br />
                     <font style="margin-left: 50px">Name: {server_name}</font><br />
                     <font style="margin-left: 50px">ID: {server_id}</font><br /><br />
@@ -162,8 +134,8 @@ async def build_epub(log, message_history, progress_msg):
                     <font style="margin-left: 50px">Pinned Messages: {msg_pin_counter}</font><br />
                     <font style="margin-left: 50px">Total Message Authors: {len(author_info)}</font><br />
                     <font style="margin-left: 50px">Message Authors: {message_authors}</font><br /><br />
-                    
-                Created by The Discord Archivist Bot on {curr_time} <br />
+
+                Created by <a href="https://github.com/arzkar/The-Discord-Archivist">The Discord Archivist Bot </a> on {curr_time} <br />
             </p>
         </body>
     </html>
@@ -171,6 +143,7 @@ async def build_epub(log, message_history, progress_msg):
 
     book.add_item(about)
 
+    # TODO: Duplicate chapter name bug due to The Archivist Embed?
     for chapter in chapters:
         book.add_item(chapter)
 
@@ -211,3 +184,57 @@ async def build_epub(log, message_history, progress_msg):
         embed=Embed(description="Epub Created"))
 
     return True
+
+
+async def get_message_data(empty_flag, log, message, progress_msg, server_id, author_info, c1, book):
+    img_flag = 0
+
+    # adding line breaks
+    message_content = message.content.splitlines()
+    message_content = "<br />".join(message_content)
+
+    c1.content += message_content
+
+    img_id = ''.join(random.choice(string.ascii_lowercase) for i in range(10))
+
+    if message.attachments:
+        for attachment in message.attachments:
+            if any(attachment.filename.lower().endswith(image) for image in image_types):
+                img_flag = 1
+
+                log.info(
+                    f"Image found, saving data/img/{server_id}/{str(message.author.name)}_{str(author_info[str(message.author.name)])}_{img_id}.png")
+                await progress_msg.edit(
+                    embed=Embed(
+                        description=f"Image found, saving data/img/{server_id}/{str(message.author.name)}_{str(author_info[str(message.author.name)])}_{img_id}.png"))
+
+                await attachment.save(f"data/img/{server_id}/{str(message.author.name)}_{str(author_info[str(message.author.name)])}_{img_id}.png")
+
+                c1.content += f'<br /><img alt={str(message.author.name)}_{str(author_info[str(message.author.name)])} src="data/img/{server_id}/{str(message.author.name)}_{str(author_info[str(message.author.name)])}_{img_id}.png"></p>'
+
+            elif not message.content:
+                empty_flag = 1
+                continue
+    else:
+        c1.content += u'</p>'
+
+    if img_flag == 1:
+
+        # load Image file
+        img1 = Image.open(
+            f'data/img/{server_id}/{str(message.author.name)}_{str(author_info[str(message.author.name)])}_{img_id}.png')
+
+        img1 = img1.convert('RGB')
+        b = io.BytesIO()
+        img1.save(b, 'jpeg')
+        b_image1 = b.getvalue()
+
+        # define Image file path in .epub
+        image1_item = epub.EpubItem(
+            uid=f'{str(message.author.name)}_{str(author_info[str(message.author.name)])}',
+            file_name=f'data/img/{server_id}/{str(message.author.name)}_{str(author_info[str(message.author.name)])}_{img_id}.png',
+            media_type='image/jpeg', content=b_image1)
+
+        book.add_item(image1_item)
+
+    return c1, book, empty_flag

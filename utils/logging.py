@@ -16,12 +16,13 @@
 
 import logging
 import os
+from time import gmtime
 
 
 def create_logger(server, channel_name):
 
-    console_handler_format = '%(asctime)s | L%(lineno)d: %(message)s'
-
+    logging.Formatter.converter = gmtime
+    logging.Formatter.default_time_format = '%Y-%m-%d %H:%M:%S %Z%z'
     log = logging.getLogger('The Discord Archivist Bot')
 
     # create directories for server
@@ -36,6 +37,7 @@ def create_logger(server, channel_name):
 
     # adding console handler
     # console_handler = logging.StreamHandler()
+    # console_handler_format = '%(asctime)s | L%(lineno)d: %(message)s'
     # console_handler.setFormatter(logging.Formatter(console_handler_format))
     # log.addHandler(console_handler)
 
