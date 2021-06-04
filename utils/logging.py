@@ -37,12 +37,12 @@ def create_logger(server, channel_name):
 
     # adding console handler
     # console_handler = logging.StreamHandler()
-    # console_handler_format = '%(asctime)s | L%(lineno)d: %(message)s'
+    # console_handler_format = '%(asctime)s | %(levelname)s | %(filename)s: L%(lineno)d: %(funcName)s: %(message)s'
     # console_handler.setFormatter(logging.Formatter(console_handler_format))
     # log.addHandler(console_handler)
 
     # adding file handler for logfile
-    file_handler_format = '%(asctime)s | %(levelname)s | L%(lineno)d: %(message)s'
+    file_handler_format = '%(asctime)s | %(levelname)s | %(filename)s: L%(lineno)d: %(funcName)s: %(message)s'
     file_handler = logging.FileHandler(
         f'data/logs/{server.id}/{server.name}_{channel_name}.log')
     file_handler.setFormatter(logging.Formatter(file_handler_format))

@@ -58,9 +58,9 @@ async def build_epub(log, message_history, progress_msg):
         embed=Embed(description="Building Epub"))
 
     for message in message_history:
-        empty_flag = 0
-
+        empty_flag = True
         if message.content or message.attachments:
+            empty_flag = False
 
             if str(message.author.name) not in author_info:
                 author_info[str(message.author.name)] = 1
@@ -102,7 +102,7 @@ async def build_epub(log, message_history, progress_msg):
                 empty_flag,
                 log, message, progress_msg, server_id, author_info, c1, book)
 
-        if empty_flag == 0:
+        if empty_flag is False:
             chapters.append(c1)
 
     message_authors = []
@@ -187,7 +187,7 @@ async def build_epub(log, message_history, progress_msg):
 
 
 async def get_message_data(empty_flag, log, message, progress_msg, server_id, author_info, c1, book):
-    img_flag = 0
+    img_flag = False
 
     # adding line breaks
     message_content = message.content.splitlines()
@@ -200,7 +200,7 @@ async def get_message_data(empty_flag, log, message, progress_msg, server_id, au
     if message.attachments:
         for attachment in message.attachments:
             if any(attachment.filename.lower().endswith(image) for image in image_types):
-                img_flag = 1
+                img_flag = True
 
                 log.info(
                     f"Image found, saving data/img/{server_id}/{str(message.author.name)}_{str(author_info[str(message.author.name)])}_{img_id}.png")
@@ -213,12 +213,12 @@ async def get_message_data(empty_flag, log, message, progress_msg, server_id, au
                 c1.content += f'<br /><img alt={str(message.author.name)}_{str(author_info[str(message.author.name)])} src="data/img/{server_id}/{str(message.author.name)}_{str(author_info[str(message.author.name)])}_{img_id}.png"></p>'
 
             elif not message.content:
-                empty_flag = 1
+                empty_flag = True
                 continue
     else:
         c1.content += u'</p>'
 
-    if img_flag == 1:
+    if img_flag:
 
         # load Image file
         img1 = Image.open(
