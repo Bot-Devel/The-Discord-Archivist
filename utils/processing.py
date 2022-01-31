@@ -167,6 +167,7 @@ async def build_epub(log, message_history, progress_msg):
     book.add_item(nav_page)
 
     # adding book spine
+    # Note: Remove nav_page from spine if in-line TOC not needed
     book.spine = [about, nav_page] + chapters
 
     log.info(
